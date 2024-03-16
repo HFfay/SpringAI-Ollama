@@ -1,6 +1,7 @@
 package me.betacat.ai.config;
 
 import org.springframework.ai.embedding.EmbeddingClient;
+import org.springframework.ai.transformer.splitter.TokenTextSplitter;
 import org.springframework.ai.vectorstore.RedisVectorStore;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Value;
@@ -25,5 +26,11 @@ public class CommonConfig {
                 .build();
 
         return new RedisVectorStore(config, embeddingClient);
+    }
+
+
+    @Bean
+    public TokenTextSplitter tokenTextSplitter() {
+        return new TokenTextSplitter();
     }
 }
