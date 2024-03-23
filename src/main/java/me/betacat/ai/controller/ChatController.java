@@ -46,32 +46,26 @@ public class ChatController {
 
     @GetMapping("/ai/ask")
     public Map ask(@RequestParam(value = "message", defaultValue = "这场比赛谁赢了，比分是多少？") String message) {
-
+        System.out.println("问题: " + message);
 
         List<Document> similarDocuments = vectorStore.similaritySearch(
                 SearchRequest
-                        .query(message)
-                        .withTopK(5));
-
+                        .query(message));
+        System.out.println("\n相似度内容数量: " + similarDocuments.size());
 
         String content = "";
+        int i = 0;
         for(Document document : similarDocuments) {
             content += document.getContent() + "";
+            System.out.println((++i) + "，相似度：" + document.getMetadata().get("vector_score") + ", 内容: \n" + document.getContent());
         }
-        System.out.println("相似度内容数量: " + similarDocuments.size());
-        System.out.println("相似度内容: \n" + content);
 
-//        String userText = """
-//        Tell me about three famous pirates from the Golden Age of Piracy and why they did.
-//        Write at least a sentence for each pirate.
-//        """;
 
         Message userMessage = new UserMessage(message);
 
         String systemText = """
-                      你是一位有助于人们查找信息的友好AI助理。
-                      你应该在给定的范围内容中回复。如果您无法找到答案,只需说"我不知道"。
-                      回答的范围在以下内容中:{documents}。
+                      请利用如下上下文的信息回答问题，上下文信息如下：{documents}\n
+                      如果上下文信息中没有帮助,只需说"我不知道"。
                 """;
 
         SystemPromptTemplate systemPromptTemplate = new SystemPromptTemplate(systemText);
@@ -79,38 +73,11 @@ public class ChatController {
 
         Prompt prompt = new Prompt(List.of(userMessage, systemMessage));
 
-
         List<Generation> response = chatClient.call(prompt).getResults();
+        System.out.println("\n返回的结果: \n" + response.getFirst().getOutput().getContent());
 
         return Map.of("generation", response);
     }
 
 
-
-
-    @GetMapping("/ai/ask2")
-    public Map ask2(@RequestParam(value = "message", defaultValue = "Tell me a joke") String message) {
-
-        String userText = """
-        Tell me about three famous pirates from the Golden Age of Piracy and why they did.
-        Write at least a sentence for each pirate.
-        """;
-
-        Message userMessage = new UserMessage(userText);
-
-        String systemText = """
-          You are a helpful AI assistant that helps people find information.
-          Your name is {name}
-          You should reply to the user's request with your name and reply in chinese and also in the style of a {voice}.
-          """;
-
-        SystemPromptTemplate systemPromptTemplate = new SystemPromptTemplate(systemText);
-        Message systemMessage = systemPromptTemplate.createMessage(Map.of("name", "萌幻妖姬", "voice", "少女声"));
-
-        Prompt prompt = new Prompt(List.of(userMessage, systemMessage));
-
-        List<Generation> response = chatClient.call(prompt).getResults();
-
-        return Map.of("generation", response);
-    }
 }
