@@ -1,28 +1,34 @@
 package me.betacat.ai.controller;
 
 
+import jakarta.servlet.http.HttpServletResponse;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections4.MapUtils;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.transformer.splitter.TokenTextSplitter;
 import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.ai.vectorstore.filter.FilterExpressionBuilder;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.util.DigestUtils;
+import org.springframework.util.StringUtils;
+import org.springframework.web.bind.annotation.*;
 
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
 @RestController
-public class RedisVectorDbController {
+@Slf4j
+public class VectorDbController {
 
     private final VectorStore vectorStore;
 
     private final TokenTextSplitter tokenTextSplitter;
 
     @Autowired
-    public RedisVectorDbController(VectorStore vectorStore, TokenTextSplitter tokenTextSplitter) {
+    public VectorDbController(VectorStore vectorStore, TokenTextSplitter tokenTextSplitter) {
         this.vectorStore = vectorStore;
         this.tokenTextSplitter = tokenTextSplitter;
     }
@@ -101,5 +107,133 @@ public class RedisVectorDbController {
                                 b.gte("year", 2021)).build()));
         return results;
     }
+
+
+
+
+
+
+
+    @PostMapping("/ai/upload")
+    public Map upload(@RequestBody Map params, HttpServletResponse response) {
+
+        String project = MapUtils.getString(params, "project", "default");
+        String operation = MapUtils.getString(params, "operation", "");
+
+
+        if (!Arrays.asList("add", "delete", "clean", "generate").contains(operation)) {
+            log.info("Operation {} is not supported. Abort.", operation);
+            response.setStatus(400);
+            return Map.of("error", "Operation {} is not supported. Abort.");
+        }
+        if (operation.equals("clean")) {
+            // Delete all the stored pages TODO 清空知识库
+//            await PagesTable.where({ project }).delete();
+//            vectorStore.delete();
+
+            return Map.of("ok", 1);
+        }
+        if (operation.equals("generate")) {
+//            await generateEmbeddings(project); TODO 文件全部上传后统一生成
+            return Map.of("ok", 1);
+        }
+
+        String path = MapUtils.getString(params, "path", "");
+        String title = MapUtils.getString(params, "title", "");
+        String content = MapUtils.getString(params, "content", "");
+
+        if (!StringUtils.hasLength(path)) {
+            log.info("Missing param `path`. Abort.");
+            response.setStatus(400);
+            return Map.of("error", "You are missing param `path`. Abort.");
+        }
+
+        if (operation.equals("delete")) {
+            // Delete single page TODO 删除单个页面
+//            await PagesTable.where({ project, path }).delete();
+            return Map.of("ok", 1);
+        }
+
+
+
+
+        // Generate checksum for the page, so we can determine if this page is changed
+        String checksum = DigestUtils.md5DigestAsHex(content.getBytes(StandardCharsets.UTF_8));
+
+        // 精确查找知识库指定页面的内容
+//        Object existed = await PagesTable.where({
+//                project,
+//                path,
+//        }).findOne();
+        List<Document> results = vectorStore.similaritySearch(
+                SearchRequest
+                        .defaults()
+//                        .withTopK(topK)
+//                        .withSimilarityThreshold(similarityThreshold)
+                        .withFilterExpression("project = " + project + " && path = " + path)
+        );
+
+        if (!results.isEmpty()) {
+            String oldchecksum = MapUtils.getString(results.getFirst().getMetadata(), "checksum", "")
+            if (oldchecksum.equals(checksum)) {
+                log.info("This page\'s content is still fresh. Skip regenerating.");
+                return Map.of("ok", 1);
+            } else {
+                // Delete the exist one since we will regenerate it TODO 先删除旧页面内容
+//                await PagesTable.where({ project, path }).delete();
+            }
+        }
+
+        /**
+         * metadata的内容
+         * {
+         *     project,
+         *     path,
+         *     title,
+         *     checksum,
+         *     chunkIndex: index,
+         *     content: chunk,
+         *     embedding: null,
+         * }
+         */
+
+        List<Document> documents = List.of(
+                new Document(
+                        content,
+                        Map.of(
+                                "project", project,
+                                "path", path,
+                                "checksum", checksum
+                        )
+                )
+        );
+
+        vectorStore.add(tokenTextSplitter.apply(documents));
+
+
+        return Map.of("ok", 1);
+    }
+
+
+    static final String param = """
+     {"operation":"add",
+     "path":"README.md",
+     "content":"# Documate Vitepress Starter\n\nAn example shows how to integrate Documate into Vitepress site. You can also use this as a template to start a new
+ project.\n"}
+""";
+
+
+    private static final String context = """
+            {"responseHeader":{},"cookies":{},"responseCookies":[],"code":400,"method":"POST","path":"/upload","trigger":"HTTP","rawBody":{"type":"Buffer","data":[123,34,111,112,101,114,97,116,105,111,110,34
+            ,58,34,97,100,100,34,44,34,112,97,116,104,34,58,34,82,69,65,68,77,69,46,109,100,34,44,34,99,111,110,116,101,110,116,34,58,34,35,32,68,111,99,117,109,97,116,101,32,86,105,116,101,112,114,101,115,115,32,83,11
+            6,97,114,116,101,114,92,110,92,110,65,110,32,101,120,97,109,112,108,101,32,115,104,111,119,115,32,104,111,119,32,116,111,32,105,110,116,101,103,114,97,116,101,32,68,111,99,117,109,97,116,101,32,105,110,116,
+            111,32,86,105,116,101,112,114,101,115,115,32,115,105,116,101,46,32,89,111,117,32,99,97,110,32,97,108,115,111,32,117,115,101,32,116,104,105,115,32,97,115,32,97,32,116,101,109,112,108,97,116,101,32,116,111,32
+            ,115,116,97,114,116,32,97,32,110,101,119,32,112,114,111,106,101,99,116,46,92,110,34,125]},"host":"f3v34sknbs.us.aircode.run","url":"/upload","protocol":"https","query":{},"headers":{"host":"production-chfky
+            p-dcdwwryubx.us-west-1-vpc.fcapp.run","user-agent":"axios/1.6.8","content-length":"208","accept":"application/json, text/plain, */*","accept-encoding":"gzip, compress, deflate, br","content-type":"applicati
+            on/json","x-aircode-request-id":"2024032709390735022f831f074","x-forwarded-for":"116.232.52.122, 172.30.159.252","x-forwarded-host":"f3v34sknbs.us.aircode.run","x-forwarded-path":"/upload","x-forwarded-port
+            ":"443","x-forwarded-proto":"https, https","x-real-ip":"116.232.52.122"}}
+                        
+            """;
+
 
 }

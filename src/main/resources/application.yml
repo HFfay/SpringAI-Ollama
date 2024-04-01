@@ -1,0 +1,26 @@
+server:
+  port: 9999
+
+
+spring:
+  application:
+    name: SpringAI-Ollama
+  datasource:
+    url: jdbc:postgresql://192.168.95.1:5432/vitepress_rag
+    username: pgvector
+    password: pgvector
+  ai:
+    ollama:
+      base-url: http://127.0.0.1:11434/
+      chat:
+        options:
+          model: qwen:7b-chat-v1.5-q2_K
+          temperature: 0.7
+      embedding:
+        options:
+          model: qwen:7b-chat-v1.5-q2_K
+    vectorstore:
+      pgvector:
+        index-type: HNSW
+        distance-type: COSINE_DISTANCE
+        dimension: 1536
