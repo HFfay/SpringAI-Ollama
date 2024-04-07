@@ -15,6 +15,7 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -165,16 +166,16 @@ public class VectorDbController {
 //                project,
 //                path,
 //        }).findOne();
-        List<Document> results = vectorStore.similaritySearch(
+        List<Document> results = new ArrayList<>(); /*vectorStore.similaritySearch(
                 SearchRequest
                         .defaults()
 //                        .withTopK(topK)
 //                        .withSimilarityThreshold(similarityThreshold)
                         .withFilterExpression("project = " + project + " && path = " + path)
-        );
+        );*/
 
         if (!results.isEmpty()) {
-            String oldchecksum = MapUtils.getString(results.getFirst().getMetadata(), "checksum", "")
+            String oldchecksum = MapUtils.getString(results.getFirst().getMetadata(), "checksum", "");
             if (oldchecksum.equals(checksum)) {
                 log.info("This page\'s content is still fresh. Skip regenerating.");
                 return Map.of("ok", 1);

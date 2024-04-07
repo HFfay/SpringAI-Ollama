@@ -1,5 +1,7 @@
 package me.betacat.ai.controller;
 
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections4.MapUtils;
 import org.springframework.ai.chat.ChatResponse;
 import org.springframework.ai.chat.Generation;
 import org.springframework.ai.chat.messages.Message;
@@ -18,6 +20,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
+@Slf4j
 public class ChatController {
 
     private final OllamaChatClient chatClient;
@@ -44,26 +47,29 @@ public class ChatController {
 
     @GetMapping("/ai/ask")
     public Map ask(@RequestParam(value = "message", defaultValue = "这场比赛谁赢了，比分是多少？") String message) {
-        System.out.println("问题: " + message);
+        log.info("question: " + message);
 
         List<Document> similarDocuments = vectorStore.similaritySearch(
                 SearchRequest
-                        .query(message));
-        System.out.println("\n相似度内容数量: " + similarDocuments.size());
+                        .query(message)
+                        .withSimilarityThreshold(0.5)
+        );
+        log.info("similarDocuments size: " + similarDocuments.size());
 
         String content = "";
         int i = 0;
         for (Document document : similarDocuments) {
             content += document.getContent() + "";
-            System.out.println((++i) + "，相似度：" + document.getMetadata().get("vector_score") + ", 内容: \n" + document.getContent());
+            log.info((++i) + "，distance：" + document.getMetadata().get("distance") + ", content: \n" + document.getContent());
         }
 
 
         Message userMessage = new UserMessage(message);
 
         String systemText = """
-                      请利用如下上下文的信息回答问题，上下文信息如下：{documents}\n
-                      如果上下文信息中没有帮助,只需说"我不知道"。
+                      请利用如下上下文的信息回答问题，如果上下文信息中没有帮助,只需说"我不知道"。
+                      后面的都是上下文信息：\n
+                      {documents}
                 """;
 
         SystemPromptTemplate systemPromptTemplate = new SystemPromptTemplate(systemText);
@@ -72,7 +78,7 @@ public class ChatController {
         Prompt prompt = new Prompt(List.of(userMessage, systemMessage));
 
         List<Generation> response = chatClient.call(prompt).getResults();
-        System.out.println("\n返回的结果: \n" + response.getFirst().getOutput().getContent());
+        log.info("\n返回的结果: \n" + response.getFirst().getOutput().getContent());
 
         return Map.of("generation", response);
     }
@@ -80,22 +86,22 @@ public class ChatController {
 
     @PostMapping("/ai/askStream")
     @CrossOrigin
-    public Flux<ChatResponse> generateVitePressDoc(@RequestBody String question) {
+    public Flux<ChatResponse> generateVitePressDoc(@RequestBody Map params) {
 
-        question = "湖人最后的比分是多少？";//question.trim();
+        String question = MapUtils.getString(params, "question", "");
 
 
-        System.out.println("问题: " + question);
+        log.info("question: " + question);
 
         List<Document> similarDocuments = vectorStore.similaritySearch(SearchRequest.query(question));
-        System.out.println("\n相似度查询内容数量: " + similarDocuments.size());
+        log.info("\nsimilarDocuments size: " + similarDocuments.size());
 
         String content = "";
         int i = 0;
         for (Document document : similarDocuments) {
             // TODO 需要限制上下文的大小 MAX_CONTEXT_TOKEN
             content += document.getContent() + "";
-            System.out.println((++i) + "，相似度：" + document.getMetadata().get("vector_score") + ", 内容: \n" + document.getContent());
+            log.info((++i) + "，distance：" + document.getMetadata().get("distance") + ", content: \n" + document.getContent());
         }
 
 
