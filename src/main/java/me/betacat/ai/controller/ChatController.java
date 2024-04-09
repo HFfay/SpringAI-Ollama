@@ -45,6 +45,7 @@ public class ChatController {
     }
 
     @GetMapping("/ai/ask2")
+    @CrossOrigin
     public Flux<ChatResponse> ask2(@RequestParam(value = "message", defaultValue = "这场比赛谁赢了，比分是多少？") String message) {
         log.info("question: " + message);
 
@@ -52,7 +53,7 @@ public class ChatController {
                 SearchRequest
                         .query(message)
 //                        .withSimilarityThreshold(0.5)
-                        .withFilterExpression("project in ['nba']")
+//                        .withFilterExpression("project in ['nba']")
         );
         log.info("similarDocuments size: " + similarDocuments.size());
 
@@ -152,15 +153,26 @@ public class ChatController {
                 You are a very kindly assistant who loves to help people. Given the following sections from documatation, answer the question using only that information, outputted in markdown format. If you are unsure and the answer is not explicitly written in the documentation, say "Sorry, I don't know how to help with that." Always trying to anwser in the spoken language of the questioner.
 
                 Context sections:
-                ${contextSections}
+                %s
 
                 Question:
-                ${question}
+                %s
 
                 Answer as markdown (including related code snippets if available):
                 """;
+//        String userPrompt = """
+//                作为一位乐于助人的助理，您喜欢帮助别人。根据以下文档节，使用 markdown 格式回答问题。如果您不确定，且答案在文档中未明确提及，可以说：“抱歉，我不知道怎么帮助您。”尽量用提问者的口语回答。
+//
+//                上下文部分：
+//                %s
+//
+//                问题：
+//                %s
+//
+//                Markdown 格式的答案（如果有相关的代码片段）：
+//                """;
 
-        Prompt prompt = new Prompt(new UserMessage(userPrompt));
+        Prompt prompt = new Prompt(new UserMessage(String.format(userPrompt, content, question)));
 
 
 //        Message userMessage = new UserMessage(question);
@@ -173,6 +185,9 @@ public class ChatController {
 //        Message systemMessage = systemPromptTemplate.createMessage(Map.of("documents", content));
 //
 //        Prompt prompt = new Prompt(List.of(userMessage, systemMessage));
+
+        List<Generation> response = chatClient.call(prompt).getResults();
+        log.info("\n返回的结果: {}", response.getFirst().getOutput().getContent());
 
         return chatClient.stream(prompt);
     }
