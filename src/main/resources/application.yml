@@ -18,9 +18,9 @@ spring:
           temperature: 0.7
       embedding:
         options:
-          model: qwen:7b-chat-v1.5-q2_K
+          model: chevalblanc/acge_text_embedding:latest
     vectorstore:
       pgvector:
         index-type: HNSW
         distance-type: COSINE_DISTANCE
-        dimension: 1536
+        dimension: 1792

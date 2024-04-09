@@ -44,6 +44,45 @@ public class ChatController {
         return chatClient.stream(prompt);
     }
 
+    @GetMapping("/ai/ask2")
+    public Flux<ChatResponse> ask2(@RequestParam(value = "message", defaultValue = "这场比赛谁赢了，比分是多少？") String message) {
+        log.info("question: " + message);
+
+        List<Document> similarDocuments = vectorStore.similaritySearch(
+                SearchRequest
+                        .query(message)
+//                        .withSimilarityThreshold(0.5)
+                        .withFilterExpression("project in ['nba']")
+        );
+        log.info("similarDocuments size: " + similarDocuments.size());
+
+        String content = "";
+        int i = 0;
+        for (Document document : similarDocuments) {
+            content += document.getContent() + "";
+            log.info((++i) + "，distance：" + document.getMetadata().get("distance") + ", content: \n" + document.getContent());
+        }
+
+
+        Message userMessage = new UserMessage(message);
+
+        String systemText = """
+                      请利用如下上下文的信息回答问题，如果上下文信息中没有帮助,只需说"我不知道"。
+                      后面的都是上下文信息：\n
+                      {documents}
+                """;
+
+        SystemPromptTemplate systemPromptTemplate = new SystemPromptTemplate(systemText);
+        Message systemMessage = systemPromptTemplate.createMessage(Map.of("documents", content));
+
+        Prompt prompt = new Prompt(List.of(userMessage, systemMessage));
+
+//        List<Generation> response = chatClient.call(prompt).getResults();
+//        log.info("\n返回的结果: \n" + response.getFirst().getOutput().getContent());
+
+        return chatClient.stream(prompt);
+    }
+
 
     @GetMapping("/ai/ask")
     public Map ask(@RequestParam(value = "message", defaultValue = "这场比赛谁赢了，比分是多少？") String message) {
@@ -93,7 +132,10 @@ public class ChatController {
 
         log.info("question: " + question);
 
-        List<Document> similarDocuments = vectorStore.similaritySearch(SearchRequest.query(question));
+        List<Document> similarDocuments = vectorStore.similaritySearch(
+                SearchRequest.query(question)
+                        .withFilterExpression("project in ['vitepress']")
+        );
         log.info("\nsimilarDocuments size: " + similarDocuments.size());
 
         String content = "";
