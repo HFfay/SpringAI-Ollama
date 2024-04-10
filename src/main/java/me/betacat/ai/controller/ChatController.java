@@ -53,7 +53,7 @@ public class ChatController {
                 SearchRequest
                         .query(message)
 //                        .withSimilarityThreshold(0.5)
-//                        .withFilterExpression("project in ['nba']")
+                        .withFilterExpression("project == 'nba'")
         );
         log.info("similarDocuments size: " + similarDocuments.size());
 
@@ -135,7 +135,7 @@ public class ChatController {
 
         List<Document> similarDocuments = vectorStore.similaritySearch(
                 SearchRequest.query(question)
-                        .withFilterExpression("project in ['vitepress']")
+                        .withFilterExpression("project == 'vitepress'")
         );
         log.info("\nsimilarDocuments size: " + similarDocuments.size());
 
@@ -186,8 +186,8 @@ public class ChatController {
 //
 //        Prompt prompt = new Prompt(List.of(userMessage, systemMessage));
 
-        List<Generation> response = chatClient.call(prompt).getResults();
-        log.info("\n返回的结果: {}", response.getFirst().getOutput().getContent());
+//        List<Generation> response = chatClient.call(prompt).getResults();
+//        log.info("\n返回的结果: {}", response.getFirst().getOutput().getContent());
 
         return chatClient.stream(prompt);
     }
