@@ -1,26 +1,47 @@
 server:
   port: 9999
 
-
 spring:
+  threads:
+    virtual:
+      enabled: true
+
   application:
     name: SpringAI-Ollama
+
   datasource:
-    url: jdbc:postgresql://192.168.95.1:5432/vitepress_rag
+    url: jdbc:postgresql://192.168.4.10:25432/vitepress_rag
     username: pgvector
     password: pgvector
+
   ai:
-    ollama:
-      base-url: http://127.0.0.1:11434/
+    openai:
+      base-url: https://cloud.infini-ai.com/maas
+
       chat:
         options:
-          model: qwen:7b-chat-v1.5-q2_K
-          temperature: 0.7
+          model: qwq-32b
       embedding:
         options:
-          model: chevalblanc/acge_text_embedding:latest
+          model: bge-m3
+      image:
+        options:
+          model:
+
     vectorstore:
       pgvector:
         index-type: HNSW
         distance-type: COSINE_DISTANCE
         dimension: 1792
+        batching-strategy: TOKEN_COUNT # Optional: Controls how documents are batched for embedding
+        max-document-batch-size: 10000 # Optional: Maximum number of documents per batch
+
+
+    playground:
+      chat:
+        models:
+          - deepseek-r1
+          - deepseek-v3
+          - qwq-32b
+          - qwen2.5-coder-32b-instruct
+          - qwen2.5-vl-72b-instruct

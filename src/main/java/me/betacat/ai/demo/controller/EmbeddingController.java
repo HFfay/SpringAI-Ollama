@@ -1,7 +1,7 @@
-package me.betacat.ai.controller;
+package me.betacat.ai.demo.controller;
 
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.ai.embedding.EmbeddingClient;
+import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.ai.embedding.EmbeddingResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -13,10 +13,10 @@ import java.util.Map;
 @Slf4j
 public class EmbeddingController {
 
-    private final EmbeddingClient embeddingClient;
+    private final EmbeddingModel embeddingClient;
 
     @Autowired
-    public EmbeddingController(EmbeddingClient embeddingClient) {
+    public EmbeddingController(EmbeddingModel embeddingClient) {
         this.embeddingClient = embeddingClient;
     }
 

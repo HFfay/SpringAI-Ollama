@@ -1,15 +1,14 @@
-package me.betacat.ai.controller;
+package me.betacat.ai.demo.controller;
 
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.MapUtils;
-import org.springframework.ai.chat.ChatResponse;
-import org.springframework.ai.chat.Generation;
+import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.UserMessage;
+import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.chat.prompt.SystemPromptTemplate;
 import org.springframework.ai.document.Document;
-import org.springframework.ai.ollama.OllamaChatClient;
 import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,25 +22,25 @@ import java.util.Map;
 @Slf4j
 public class ChatController {
 
-    private final OllamaChatClient chatClient;
+    private final ChatClient chatClient;
 
     private final VectorStore vectorStore;
 
     @Autowired
-    public ChatController(OllamaChatClient chatClient, VectorStore vectorStore) {
-        this.chatClient = chatClient;
+    public ChatController(ChatClient.Builder chatClientBuilder, VectorStore vectorStore) {
+        this.chatClient = chatClientBuilder.build();
         this.vectorStore = vectorStore;
     }
 
     @GetMapping("/ai/generate")
-    public Map generate(@RequestParam(value = "message", defaultValue = "Tell me a joke") String message) {
-        return Map.of("generation", chatClient.call(message));
+    public String generate(@RequestParam(value = "message", defaultValue = "Tell me a joke") String message) {
+        return chatClient.prompt().user(message).call().content();
     }
 
     @GetMapping("/ai/generateStream")
-    public Flux<ChatResponse> generateStream(@RequestParam(value = "message", defaultValue = "Tell me a joke") String message) {
+    public Flux<String> generateStream(@RequestParam(value = "message", defaultValue = "Tell me a joke") String message) {
         Prompt prompt = new Prompt(new UserMessage(message));
-        return chatClient.stream(prompt);
+        return chatClient.prompt().user(message).stream().content();
     }
 
     @GetMapping("/ai/ask2")
@@ -50,18 +49,19 @@ public class ChatController {
         log.info("question: " + message);
 
         List<Document> similarDocuments = vectorStore.similaritySearch(
-                SearchRequest
+                SearchRequest.builder()
                         .query(message)
-//                        .withSimilarityThreshold(0.5)
-                        .withFilterExpression("project == 'nba'")
+//                        .similarityThreshold(0.5)
+                        .filterExpression("project == 'nba'")
+                        .build()
         );
         log.info("similarDocuments size: " + similarDocuments.size());
 
         String content = "";
         int i = 0;
         for (Document document : similarDocuments) {
-            content += document.getContent() + "";
-            log.info((++i) + "，distance：" + document.getMetadata().get("distance") + ", content: \n" + document.getContent());
+            content += document.getFormattedContent() + "";
+            log.info((++i) + "，distance：" + document.getMetadata().get("distance") + ", content: \n" + document.getFormattedContent());
         }
 
 
@@ -81,26 +81,27 @@ public class ChatController {
 //        List<Generation> response = chatClient.call(prompt).getResults();
 //        log.info("\n返回的结果: \n" + response.getFirst().getOutput().getContent());
 
-        return chatClient.stream(prompt);
+        return chatClient.prompt(prompt).stream().chatResponse();
     }
 
 
     @GetMapping("/ai/ask")
-    public Map ask(@RequestParam(value = "message", defaultValue = "这场比赛谁赢了，比分是多少？") String message) {
+    public String ask(@RequestParam(value = "message", defaultValue = "这场比赛谁赢了，比分是多少？") String message) {
         log.info("question: " + message);
 
         List<Document> similarDocuments = vectorStore.similaritySearch(
-                SearchRequest
+                SearchRequest.builder()
                         .query(message)
-                        .withSimilarityThreshold(0.5)
+                        .similarityThreshold(0.5)
+                        .build()
         );
         log.info("similarDocuments size: " + similarDocuments.size());
 
         String content = "";
         int i = 0;
         for (Document document : similarDocuments) {
-            content += document.getContent() + "";
-            log.info((++i) + "，distance：" + document.getMetadata().get("distance") + ", content: \n" + document.getContent());
+            content += document.getFormattedContent() + "";
+            log.info((++i) + "，distance：" + document.getMetadata().get("distance") + ", content: \n" + document.getFormattedContent());
         }
 
 
@@ -117,10 +118,10 @@ public class ChatController {
 
         Prompt prompt = new Prompt(List.of(userMessage, systemMessage));
 
-        List<Generation> response = chatClient.call(prompt).getResults();
-        log.info("\n返回的结果: \n" + response.getFirst().getOutput().getContent());
+        String response = chatClient.prompt(prompt).call().content();
+        log.info("\n返回的结果: \n" + response);
 
-        return Map.of("generation", response);
+        return response;
     }
 
 
@@ -134,8 +135,10 @@ public class ChatController {
         log.info("question: " + question);
 
         List<Document> similarDocuments = vectorStore.similaritySearch(
-                SearchRequest.query(question)
-                        .withFilterExpression("project == 'vitepress'")
+                SearchRequest.builder()
+                        .query(question)
+                        .filterExpression("project == 'vitepress'")
+                        .build()
         );
         log.info("\nsimilarDocuments size: " + similarDocuments.size());
 
@@ -143,8 +146,8 @@ public class ChatController {
         int i = 0;
         for (Document document : similarDocuments) {
             // TODO 需要限制上下文的大小 MAX_CONTEXT_TOKEN
-            content += document.getContent() + "";
-            log.info((++i) + "，distance：" + document.getMetadata().get("distance") + ", content: \n" + document.getContent());
+            content += document.getFormattedContent() + "";
+            log.info((++i) + "，distance：" + document.getMetadata().get("distance") + ", content: \n" + document.getFormattedContent());
         }
 
 
@@ -189,7 +192,7 @@ public class ChatController {
 //        List<Generation> response = chatClient.call(prompt).getResults();
 //        log.info("\n返回的结果: {}", response.getFirst().getOutput().getContent());
 
-        return chatClient.stream(prompt);
+        return chatClient.prompt(prompt).stream().chatResponse();
     }
 
 }

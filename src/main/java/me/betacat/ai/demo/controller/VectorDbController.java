@@ -1,4 +1,4 @@
-package me.betacat.ai.controller;
+package me.betacat.ai.demo.controller;
 
 
 import jakarta.servlet.http.HttpServletResponse;
@@ -74,23 +74,20 @@ public class VectorDbController {
 
     @GetMapping("/ai/search-vector")
     public List<Document> searcheVector(@RequestParam(value = "message", defaultValue = "Spring") String message) {
-        List<Document> results = vectorStore.similaritySearch(
-                SearchRequest
-                        .query(message)
-                        .withTopK(5));
-        return results;
+        return this.vectorStore.similaritySearch(SearchRequest.builder().query(message).topK(5).build());
     }
 
     @GetMapping("/ai/search-vector2")
     public List<Document> searcheVector2(@RequestParam(value = "message", defaultValue = "The World") String message) {
 
-        List<Document> results = vectorStore.similaritySearch(
-                SearchRequest
+        return vectorStore.similaritySearch(
+                SearchRequest.builder()
                         .query(message)
-                        .withTopK(topK)
-                        .withSimilarityThreshold(similarityThreshold)
-                        .withFilterExpression("country in ['UK', 'NL'] && year >= 2020"));
-        return results;
+                        .topK(topK)
+                        .similarityThreshold(similarityThreshold)
+                        .filterExpression("country in ['UK', 'NL'] && year >= 2020")
+                        .build()
+        );
     }
 
 
@@ -98,15 +95,16 @@ public class VectorDbController {
     public List<Document> searcheVector3(@RequestParam(value = "message", defaultValue = "The World") String message) {
         FilterExpressionBuilder b = new FilterExpressionBuilder();
 
-        List<Document> results =  vectorStore.similaritySearch(
-                SearchRequest
+        return vectorStore.similaritySearch(
+                SearchRequest.builder()
                         .query("The World")
-                        .withTopK(topK)
-                        .withSimilarityThreshold(similarityThreshold)
-                        .withFilterExpression(b.and(
-                                b.in("country", "UK", "NL"),
-                                b.gte("year", 2021)).build()));
-        return results;
+                        .topK(topK)
+                        .similarityThreshold(similarityThreshold)
+                        .filterExpression(
+                                b.and(b.in("country", "UK", "NL"), b.gte("year", 2021)).build()
+                        )
+                        .build()
+        );
     }
 
 
